@@ -7,13 +7,18 @@ uint8_t receiverMAC[] = {0x18, 0x8b, 0x0e, 0x92, 0x4f, 0x98};
 
 #define BUTTON_PIN 13 
 
+#define MOTOR_SPEED_CTRL 12
+
 typedef struct struct_message {
   bool led;
+  int motor;
 } struct_message;
 
 struct_message sendData;
 bool ledState = false;      // 紀錄目前的燈號狀態
 bool lastButtonState = HIGH; // 紀錄上一次按鈕的狀態
+
+int motorSpeed = 0;
 
 void setup() {
   Serial.begin(115200);
@@ -41,6 +46,8 @@ void setup() {
 void loop() {
   bool currentButtonState = digitalRead(BUTTON_PIN);
 
+  motorSpeed = analogRead(MOTOR_SPEED_CTRL);
+
   // 關鍵邏輯：偵測「按下」的那一瞬間 (從 HIGH 變成 LOW)
   if (currentButtonState == LOW && lastButtonState == HIGH) {
     delay(50); // 硬體防彈跳：等待訊號穩定
@@ -53,11 +60,17 @@ void loop() {
       Serial.print("切換狀態至: ");
       Serial.println(ledState ? "開" : "關");
 
-      // 送出指令
-      esp_now_send(receiverMAC, (uint8_t *)&sendData, sizeof(sendData));
+      
     }
   }
 
+  motorSpeed = analogRead(MOTOR_SPEED_CTRL);
+
+  sendData.motor = motorSpeed;
+
+  esp_now_send(receiverMAC, (uint8_t *)&sendData, sizeof(sendData));
+  // 送出指令
+  
   // 儲存這一次的狀態，給下一次 loop 比較用
   lastButtonState = currentButtonState;
 }
